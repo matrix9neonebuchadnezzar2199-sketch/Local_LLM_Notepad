@@ -1,121 +1,94 @@
-# Local LLM Notepad
-Plug a USB drive and run a modern LLM on any PC **locally** with a double‑click. 
+# Owl-Bot
 
-***No installation, no internet, no API, no Cloud computing, no GPU, no admin rights required.***
+USB にコピーするだけで、**オフライン・CPU のみ**でローカル LLM チャットが使える Windows 向けツールです。  
+[Local LLM Notepad](https://github.com/runzhouye/Local_LLM_Notepad) をベースに、**Gemma 4 E2B** 向けにカスタマイズしたフォークです。
 
-Local LLM Notepad is an open-source, offline plug-and-play app for running local large-language models. Drop the single bundled .exe onto a USB stick, walk up to any computer, and start chatting, brainstorming, or drafting documents. 
+**管理リポジトリ:** [matrix9neonebuchadnezzar2199-sketch/Local_LLM_Notepad](https://github.com/matrix9neonebuchadnezzar2199-sketch/Local_LLM_Notepad)
 
+## 特徴
 
-![Portable One‑File Build](Images/Screenshot1.png)
+- インストール不要・インターネット不要・GPU 不要
+- 会話は PC 内だけで完結（クラウド API 不使用）
+- 日本語 UI（メニュー・ダイアログ・About）
+- 既定モデル: **Gemma 4 E2B**（`gemma-4-E2B-it-Q4_K_M.gguf`）
+- CPU 推論・軽量動作優先（`llama-cpp-python` 0.3.32 / `gemma4` アーキ対応）
+- プロンプト内の語句を応答内で強調表示（Ctrl+クリックで出典プロンプトを追跡）
 
-![combined_gif](Images/Combined_gif.gif)
+## 配布フォルダ構成
 
+```
+Owl-Bot/
+  Owl-Bot.exe
+  model/
+    gemma-4-E2B-it-Q4_K_M.gguf
+```
 
-# Why you’ll love it
+`Owl-Bot` フォルダごと USB や任意の場所に置いて、`Owl-Bot.exe` を起動してください。  
+GGUF は EXE に同梱せず、`model/` から直接読み込みます（起動のたびに 3 GB を TEMP へ展開しません）。
 
-🔌 Portable
+## ダウンロード（Releases）
 
-Drop the one‑file EXE and your .gguf model onto a flash drive; run on any Windows PC without admin rights.
+| ファイル | 内容 |
+|----------|------|
+| **Owl-Bot-v1.0.0-exe.zip** | `Owl-Bot.exe` と `model/` フォルダ（モデル入手手順付き） |
+| **モデル GGUF** | [unsloth/gemma-4-E2B-it-GGUF](https://huggingface.co/unsloth/gemma-4-E2B-it-GGUF) から `gemma-4-E2B-it-Q4_K_M.gguf` を `model/` に配置 |
 
-🪶 Clean UI
+> GitHub の 1 ファイル上限（2 GB）のため、約 3 GB の GGUF 本体は Releases には含めません。EXE と手順書を配布し、モデルは Hugging Face から取得してください。
 
-Two‑pane layout: type prompts below, watch token‑streamed answers above—no extra chrome.
+## クイックスタート
 
-🔍 Source‑word under‑lining
+1. Releases から `Owl-Bot-v1.0.0-exe.zip` を取得して展開
+2. `model/` に `gemma-4-E2B-it-Q4_K_M.gguf` を置く（未同梱の場合）
+3. `Owl-Bot.exe` をダブルクリック
+4. 下部の入力欄に質問を書き、**送信** または **Ctrl+S**
 
-Every word or number you wrote in your prompt is automatically bold‑underlined in the model’s reply. Ctrl+left click on them to view them in a separate window. Handy for fact‑checking summaries, tables, or data extractions.
+ウィンドウタイトルは `Owl-Bot（読み込んだモデル名）` と表示されます。
 
-💾 Save/Load chats
+## 動作環境
 
-One‑click JSON export keeps conversations with the model portable alongside the EXE.
+| 項目 | 目安 |
+|------|------|
+| OS | Windows 10/11 x64 |
+| メモリ | 約 2 GB 以上（モデル読み込み時） |
+| GPU | 不要（CPU のみ） |
+| ネットワーク | 不要（初回モデル取得時のみ必要） |
 
-⚡ Llama.cpp inside
+## ショートカット
 
-CPU‑only by default for max compatibility.
+| 操作 | キー |
+|------|------|
+| 送信 | Ctrl+S |
+| 生成停止 | Ctrl+Z |
+| 検索 | Ctrl+F |
+| 履歴クリア | Ctrl+X |
+| システムプロンプト編集 | Ctrl+P |
+| 語句強調の切替 | Ctrl+D |
+| 拡大 / 縮小 | Ctrl+ホイール |
 
-🎹 Hot‑keys
+## ビルド（開発者向け）
 
-Ctrl + S to send, Ctrl + Z to stop, Ctrl + F to find, Ctrl + X to clear chat history, Ctrl + Mouse‑Wheel zoom, etc.
+詳細は [BUILD.md](BUILD.md) を参照。
 
+```powershell
+cd Owl-Bot
+.\.venv\Scripts\pip install -r requirements.txt
+cd Notepad
+.\build.ps1
+# → Notepad/dist/Owl-Bot/ に EXE + model/ が揃う
+```
 
-# Quick Start
+## 変更履歴（フォーク）
 
-Download Local_LLM_Notepad-portable.exe from the Releases page.
+| バージョン | 概要 |
+|------------|------|
+| **v1.0.0** | Gemma 4 E2B 対応、`model/` 配布構成、日本語 UI、DPI/フォント改善 |
 
-Copy the EXE and a compatible GGUF model (e.g. gemma-3-1b-it-Q4_K_M.gguf) onto your USB.
+## クレジット
 
-Double‑click the EXE on any Windows computer. First launch caches the model into RAM; subsequent prompts stream instantly.
+- ベース: [Local LLM Notepad](https://github.com/runzhouye/Local_LLM_Notepad) by Run Zhou Ye
+- モデル: [Google Gemma 4](https://ai.google.dev/gemma) / [Unsloth GGUF](https://huggingface.co/unsloth/gemma-4-E2B-it-GGUF)
+- 推論: [llama.cpp](https://github.com/ggml-org/llama.cpp) / [llama-cpp-python](https://github.com/abetlen/llama-cpp-python)
 
-Need another model? Use File ▸ Select Model… and point to a different GGUF.
+## ライセンス
 
-
-# Download links:
-
-
-| File | Link | Notes |
-|------|------|-------|
-| **Local_LLM_Notepad-portable.exe** | [Direct download (v1.0.1)](https://github.com/runzhouye/Local_LLM_Notepad/releases/tag/v1.0.1) | ~45 MB, contains everything needed to run LLM on Windows computer |
-| **gemma-3-1b-it-Q4_K_M.gguf** | [Hugging Face](https://huggingface.co/ggml-org/gemma-3-1b-it-GGUF/tree/main) | Fast CPU model (~0.8 GB) we recommend for first-time users. Achieves ~20 tokens/second on an i7-10750H CPU  ![HF_screenshot](Images/HF_screenshot_2.png)|
-| **Icon (optional)** | [Notepad icon PNG](https://upload.wikimedia.org/wikipedia/commons/c/c9/Windows_Notepad_icon.png) | Save as `Icon.png` next to the EXE and it will be used automatically |
-
-
-# Feature Details
-
-### Portable One‑File Build
-
-![Portable One‑File Build](Images/Screenshot1.png)
-
-
-### Automated Source Highlighting (Ctrl + click)
-
-Every word, number you used in the prompt is bold‑underlined in the LLM answer.  
-
-Ctrl + click any under‑lined word to open a side window with every single prompt that contained it—great for tracing sources.
-
-![bold_text_demo](Images/bold_text_demo.gif)
-
-### Ctrl + S to Send text to LLM
-
-![CtrlS](Images/CtrlS.gif)
-
-### Ctrl + Z to stop LLM generation
-
-![CtrlZ](Images/CtrlZ.gif)
-
-### Ctrl + F to find in chat history
-
-![CtrlF](Images/CtrlF.gif)
-
-### Ctrl + X to clear chat history
-
-![CtrlX](Images/CtrlX.gif)
-
-### Ctrl + P to edit system prompt anytime
-
-![change_syst_prompt](Images/change_syst_prompt.gif)
-
-### File ▸ Save/Load chat history
-
-![Load_chat](Images/Load_chat.gif)
-
-
-# (Optional) Building Your Own Portable EXE
-### 1. Clone
-
-$ git clone https://github.com/runzhouye/Local_LLM_Notepad.git
-
-$ cd Local_LLM_Notepad
-
-### 2. Create env & install deps
-
-$ python -m venv .venv && .\.venv\Scripts\activate
-
-$ pip install -r requirements.txt
-
-### 3. Bundle everything
-
-$ pyinstaller --onefile --noconsole --additional-hooks-dir=. main.py
-
-### 4. Grab dist/Local_LLM_Notepad.exe (≈45 MB)
-
-
+ベースプロジェクトの LICENSE を継承。Gemma モデルは [Gemma 利用規約](https://ai.google.dev/gemma/terms) に従ってください。

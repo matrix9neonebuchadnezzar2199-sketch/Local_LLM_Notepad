@@ -73,3 +73,10 @@ Uses `Notepad/models/*.gguf` during development; frozen EXE uses `model/` next t
 - `n_ctx`: 4096, `max_tokens`: 2048
 - CPU-only (`n_gpu_layers=0`)
 - **File → Select Model** overrides the default
+
+## UI notes (v1.0.0)
+
+- Japanese menus and About dialog
+- Prompt panel: light navy background + Send button
+- Window title: `Owl-Bot（model-name）`
+- Windows: Per-Monitor DPI awareness + Yu Gothic UI / Meiryo UI fonts (reduces blurry text on 125%+ scaling)

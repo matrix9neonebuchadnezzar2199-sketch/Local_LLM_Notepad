@@ -17,6 +17,10 @@ $PyInstaller = "..\.venv\Scripts\pyinstaller.exe"
 
 New-Item -ItemType Directory -Force -Path "$DistRoot\model" | Out-Null
 Copy-Item -Force "dist\Owl-Bot.exe" "$DistRoot\Owl-Bot.exe"
+$ReadmeSrc = "..\packaging\model\README.txt"
+if (Test-Path $ReadmeSrc) {
+    Copy-Item -Force $ReadmeSrc "$DistRoot\model\README.txt"
+}
 
 if (Test-Path $ModelRel) {
     Copy-Item -Force $ModelRel "$DistRoot\model\"
