@@ -6,7 +6,6 @@ import queue
 import re
 import threading
 from typing import List, Tuple
-import webbrowser
 
 import tkinter as tk
 import tkinter.font as tkfont
@@ -16,12 +15,29 @@ from llm_utils import DEFAULT_MODEL_FILENAME, get_model_dir, resolve_model_path,
 
 __all__ = ["ChatGUI", "run_app"]
 
+# 配色（上: 履歴 / 下: プロンプト）
+_COLOR_HISTORY_BG = "#ffffff"
+_COLOR_PROMPT_BG = "#dce6f2"  # 薄い紺
+_COLOR_PROMPT_INPUT_BG = "#f4f7fb"
+_COLOR_BORDER = "#3d5a80"
+_COLOR_SEND_BG = "#3d5a80"
+_COLOR_SEND_FG = "#ffffff"
+_COLOR_SEND_ACTIVE = "#2c4260"
+_APP_NAME = "Owl-Bot"
+
+
+def _model_display_name(model_path: str) -> str:
+    """GGUF ファイル名から表示用モデル名を得る。"""
+    base = os.path.basename(model_path)
+    if base.lower().endswith(".gguf"):
+        return base[: -len(".gguf")]
+    return base or "（モデル未設定）"
+
 
 class ChatGUI:
     def __init__(self, root: tk.Tk):
         self.root = root
-        root.title("Local LLM Notepad")
-        root.configure(bg="white")
+        root.configure(bg=_COLOR_HISTORY_BG)
 
         icon_path = "Icon.png"
         if os.path.exists(icon_path):
@@ -34,61 +50,75 @@ class ChatGUI:
         # ─────────────────── State ───────────────────
         self.system_prompt: str = "You are a helpful assistant."
 
+        try:
+            self.model_path = resolve_model_path(DEFAULT_MODEL_FILENAME)
+        except FileNotFoundError:
+            self.model_path = DEFAULT_MODEL_FILENAME
+        self._update_window_title()
+
         # ─────────────────── Menus ───────────────────
         menubar = tk.Menu(root)
         file_menu = tk.Menu(menubar, tearoff=0)
-        file_menu.add_command(label="Select Model...", command=self.select_model)
-        file_menu.add_command(label="Save Chat...", command=self.save_chat)
-        file_menu.add_command(label="Load Chat...", command=self.load_chat)
+        file_menu.add_command(label="モデルを選択...", command=self.select_model)
+        file_menu.add_command(label="会話を保存...", command=self.save_chat)
+        file_menu.add_command(label="会話を読み込み...", command=self.load_chat)
         file_menu.add_separator()
-        file_menu.add_command(label="Exit", command=root.quit)
-        menubar.add_cascade(label="File", menu=file_menu)
+        file_menu.add_command(label="終了", command=root.quit)
+        menubar.add_cascade(label="ファイル", menu=file_menu)
 
         edit_menu = tk.Menu(menubar, tearoff=0)
-        edit_menu.add_command(label="Send", accelerator="Ctrl+S", command=self.on_send)
-        edit_menu.add_command(label="Find...", accelerator="Ctrl+F", command=self.open_find)
+        edit_menu.add_command(label="送信", accelerator="Ctrl+S", command=self.on_send)
+        edit_menu.add_command(label="検索...", accelerator="Ctrl+F", command=self.open_find)
         edit_menu.add_separator()
-        edit_menu.add_command(label="Edit System Prompt...", accelerator="Ctrl+P", command=self.edit_system_prompt)
+        edit_menu.add_command(
+            label="システムプロンプトを編集...",
+            accelerator="Ctrl+P",
+            command=self.edit_system_prompt,
+        )
         edit_menu.add_separator()
-        edit_menu.add_command(label="Stop Generation", accelerator="Ctrl+Z", command=self.on_stop)
-        edit_menu.add_command(label="Clear History", accelerator="Ctrl+X", command=self.on_clear)
+        edit_menu.add_command(label="生成を停止", accelerator="Ctrl+Z", command=self.on_stop)
+        edit_menu.add_command(label="履歴をクリア", accelerator="Ctrl+X", command=self.on_clear)
         edit_menu.add_separator()
-        edit_menu.add_command(label="Toggle Bold/Underline", accelerator="Ctrl+D", command=self.toggle_word_style)
-        menubar.add_cascade(label="Edit", menu=edit_menu)
+        edit_menu.add_command(
+            label="語句の強調表示を切替",
+            accelerator="Ctrl+D",
+            command=self.toggle_word_style,
+        )
+        menubar.add_cascade(label="編集", menu=edit_menu)
 
         format_menu = tk.Menu(menubar, tearoff=0)
-        format_menu.add_command(label="Toggle Word Wrap", command=self.toggle_wrap)
-        menubar.add_cascade(label="Format", menu=format_menu)
+        format_menu.add_command(label="折り返しの切替", command=self.toggle_wrap)
+        menubar.add_cascade(label="書式", menu=format_menu)
 
         view_menu = tk.Menu(menubar, tearoff=0)
-        view_menu.add_command(label="Zoom In", accelerator="Ctrl++", command=self.zoom_in)
-        view_menu.add_command(label="Zoom Out", accelerator="Ctrl+-", command=self.zoom_out)
-        menubar.add_cascade(label="View", menu=view_menu)
+        view_menu.add_command(label="拡大", accelerator="Ctrl++", command=self.zoom_in)
+        view_menu.add_command(label="縮小", accelerator="Ctrl+-", command=self.zoom_out)
+        menubar.add_cascade(label="表示", menu=view_menu)
 
         help_menu = tk.Menu(menubar, tearoff=0)
-        help_menu.add_command(label="About", command=self.show_about)
-        menubar.add_cascade(label="About", menu=help_menu)
+        help_menu.add_command(label="このツールについて", command=self.show_about)
+        menubar.add_cascade(label="ヘルプ", menu=help_menu)
         root.config(menu=menubar)
 
         # ─────────────────── Layout ───────────────────
         style = ttk.Style()
         style.configure(
             "Plain.TPanedwindow",
-            background="white",
+            background=_COLOR_BORDER,
             borderwidth=0,
             relief="flat",
-            sashwidth=4,
+            sashwidth=6,
         )
         panes = ttk.PanedWindow(root, orient="vertical", style="Plain.TPanedwindow")
         panes.pack(fill=tk.BOTH, expand=True)
 
-        # History
-        hist_frame = tk.Frame(root, bg="white")
+        # 履歴（上）
+        hist_frame = tk.Frame(root, bg=_COLOR_HISTORY_BG)
         self.history_text = tk.Text(
             hist_frame,
             wrap=tk.WORD,
             state="disabled",
-            bg="white",
+            bg=_COLOR_HISTORY_BG,
             bd=0,
             highlightthickness=0,
         )
@@ -108,21 +138,64 @@ class ChatGUI:
         self.history_text.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         panes.add(hist_frame, weight=4)
 
-        # Input
-        inp_frame = tk.Frame(root, bg="white")
+        # プロンプト（下・薄い紺）
+        prompt_outer = tk.Frame(root, bg=_COLOR_PROMPT_BG)
+        tk.Frame(prompt_outer, height=2, bg=_COLOR_BORDER).pack(fill=tk.X, side=tk.TOP)
+
+        inp_frame = tk.Frame(prompt_outer, bg=_COLOR_PROMPT_BG, padx=8, pady=8)
+        inp_frame.pack(fill=tk.BOTH, expand=True)
+
+        inp_body = tk.Frame(inp_frame, bg=_COLOR_PROMPT_BG)
+        inp_body.pack(fill=tk.BOTH, expand=True)
+
+        text_col = tk.Frame(inp_body, bg=_COLOR_PROMPT_BG)
+        text_col.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+
         self.input_text = tk.Text(
-            inp_frame,
+            text_col,
             height=4,
             wrap=tk.WORD,
-            bg="white",
-            bd=0,
-            highlightthickness=0,
+            bg=_COLOR_PROMPT_INPUT_BG,
+            fg="#1a1a1a",
+            bd=1,
+            relief=tk.SOLID,
+            highlightthickness=1,
+            highlightbackground=_COLOR_BORDER,
+            highlightcolor=_COLOR_BORDER,
         )
-        vscroll_inp = tk.Scrollbar(inp_frame, command=self.input_text.yview)
+        vscroll_inp = tk.Scrollbar(text_col, command=self.input_text.yview)
         self.input_text.configure(yscrollcommand=vscroll_inp.set)
         vscroll_inp.pack(side=tk.RIGHT, fill=tk.Y)
         self.input_text.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-        panes.add(inp_frame, weight=1)
+
+        btn_col = tk.Frame(inp_body, bg=_COLOR_PROMPT_BG)
+        btn_col.pack(side=tk.RIGHT, fill=tk.Y, padx=(8, 0))
+
+        self.send_button = tk.Button(
+            btn_col,
+            text="送信",
+            width=8,
+            command=self.on_send,
+            bg=_COLOR_SEND_BG,
+            fg=_COLOR_SEND_FG,
+            activebackground=_COLOR_SEND_ACTIVE,
+            activeforeground=_COLOR_SEND_FG,
+            relief=tk.FLAT,
+            padx=8,
+            pady=6,
+            cursor="hand2",
+        )
+        self.send_button.pack(side=tk.BOTTOM, pady=(4, 0))
+
+        tk.Label(
+            btn_col,
+            text="Ctrl+S",
+            bg=_COLOR_PROMPT_BG,
+            fg="#5a6d82",
+            font=("", 8),
+        ).pack(side=tk.BOTTOM)
+
+        panes.add(prompt_outer, weight=1)
 
         # ─────────────────── Internals ───────────────────
         self.queue: queue.Queue[str | None] = queue.Queue()
@@ -133,10 +206,6 @@ class ChatGUI:
             r"(\|[^\n]+\|\n\|[ \-:|]+\|\n(?:\|[^\n]+\|\n?)*)",
             re.MULTILINE,
         )
-        try:
-            self.model_path = resolve_model_path(DEFAULT_MODEL_FILENAME)
-        except FileNotFoundError:
-            self.model_path = DEFAULT_MODEL_FILENAME
         self.search_start = "1.0"
 
         # Window for user prompts (created on first ctrl-click)
@@ -160,15 +229,20 @@ class ChatGUI:
             "user_word", "<Control-Button-1>", self._on_ctrl_click_user_word
         )
 
+    def _update_window_title(self) -> None:
+        """ウィンドウタイトルに読み込みモデル名を反映する。"""
+        name = _model_display_name(self.model_path)
+        self.root.title(f"{_APP_NAME}（{name}）")
+
     def save_chat(self):
         if not self.history_data:
-            messagebox.showinfo("Save Chat", "Nothing to save yet.")
+            messagebox.showinfo("会話の保存", "保存する会話がありません。")
             return
 
         path = filedialog.asksaveasfilename(
-            title="Save Chat",
+            title="会話を保存",
             defaultextension=".json",
-            filetypes=[("JSON files", "*.json"), ("All files", "*.*")],
+            filetypes=[("JSON ファイル", "*.json"), ("すべてのファイル", "*.*")],
         )
         if not path:
             return
@@ -176,18 +250,18 @@ class ChatGUI:
         try:
             with open(path, "w", encoding="utf-8") as f:
                 json.dump(self.history_data, f, ensure_ascii=False, indent=2)
-            messagebox.showinfo("Save Chat", f"Chat saved to:\n{path}")
+            messagebox.showinfo("会話の保存", f"保存しました:\n{path}")
         except Exception as ex:
-            messagebox.showerror("Save Chat", f"Failed to save:\n{ex}")
+            messagebox.showerror("会話の保存", f"保存に失敗しました:\n{ex}")
 
     def load_chat(self):
         if self.gen_thread and self.gen_thread.is_alive():
-            messagebox.showinfo("Please wait", "Cannot load while generating.")
+            messagebox.showinfo("お待ちください", "生成中は読み込めません。")
             return
 
         path = filedialog.askopenfilename(
-            title="Load Chat",
-            filetypes=[("JSON files", "*.json"), ("All files", "*.*")],
+            title="会話を読み込み",
+            filetypes=[("JSON ファイル", "*.json"), ("すべてのファイル", "*.*")],
         )
         if not path:
             return
@@ -198,9 +272,9 @@ class ChatGUI:
             if not isinstance(data, list) or not all(
                     isinstance(d, dict) and "user" in d and "assistant" in d for d in data
             ):
-                raise ValueError("File does not contain valid chat history.")
+                raise ValueError("会話履歴の形式が正しくありません。")
         except Exception as ex:
-            messagebox.showerror("Load Chat", f"Could not load chat:\n{ex}")
+            messagebox.showerror("会話の読み込み", f"読み込めませんでした:\n{ex}")
             return
 
         # wipe current session
@@ -211,20 +285,17 @@ class ChatGUI:
 
         for entry in self.history_data:
             user_msg, assist_msg = entry["user"], entry["assistant"]
-            # User line
-            self.history_text.insert(tk.END, f"User: {user_msg}\nAssistant: ")
+            self.history_text.insert(tk.END, f"ユーザー: {user_msg}\nアシスタント: ")
             assist_start = self.history_text.index("end-1c")
-            # Assistant line
             self.history_text.insert(tk.END, assist_msg)
             assist_end = self.history_text.index("end-1c")
             self.assistant_segments.append((assist_start, assist_end))
             self.history_text.insert(tk.END, "\n\n")
-            # apply post-processing (tables, link stripping, highlights, …)
             self._post_process(assist_start, assist_end)
 
         self.history_text.config(state="disabled")
         self.history_text.see(tk.END)
-        messagebox.showinfo("Load Chat", f"Loaded {len(self.history_data)} turns.")
+        messagebox.showinfo("会話の読み込み", f"{len(self.history_data)} 件のやり取りを読み込みました。")
 
 
     # ─────────────────── System Prompt Editor ───────────────────
@@ -235,7 +306,7 @@ class ChatGUI:
             win.destroy()
 
         win = tk.Toplevel(self.root)
-        win.title("Edit System Prompt")
+        win.title("システムプロンプトの編集")
         win.transient(self.root)
         win.grab_set()
 
@@ -246,8 +317,8 @@ class ChatGUI:
         btn_frame = tk.Frame(win)
         btn_frame.pack(pady=(0, 10))
 
-        tk.Button(btn_frame, text="Save", command=save_and_close).pack(side=tk.LEFT, padx=5)
-        tk.Button(btn_frame, text="Cancel", command=win.destroy).pack(side=tk.LEFT, padx=5)
+        tk.Button(btn_frame, text="保存", command=save_and_close).pack(side=tk.LEFT, padx=5)
+        tk.Button(btn_frame, text="キャンセル", command=win.destroy).pack(side=tk.LEFT, padx=5)
 
         self._center_window(win)
         text.focus_set()
@@ -258,14 +329,14 @@ class ChatGUI:
             return
         self.find_window = tk.Toplevel(self.root)
         self.find_window.protocol("WM_DELETE_WINDOW", self._close_find)
-        self.find_window.title("Find")
+        self.find_window.title("検索")
         self.find_window.transient(self.root)
 
-        tk.Label(self.find_window, text="Find:").pack(side=tk.LEFT, padx=(10, 0), pady=10)
+        tk.Label(self.find_window, text="検索:").pack(side=tk.LEFT, padx=(10, 0), pady=10)
         self.find_entry = tk.Entry(self.find_window)
         self.find_entry.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=5, pady=10)
         self.find_entry.bind("<Return>", lambda e: self.find_next())
-        tk.Button(self.find_window, text="Next", command=self.find_next).pack(
+        tk.Button(self.find_window, text="次へ", command=self.find_next).pack(
             side=tk.LEFT, padx=(0, 10), pady=10
         )
 
@@ -290,7 +361,7 @@ class ChatGUI:
             return
         idx = self.history_text.search(pattern, self.search_start, tk.END, nocase=True)
         if not idx:
-            messagebox.showinfo("Find", f"'{pattern}' not found")
+            messagebox.showinfo("検索", f"「{pattern}」は見つかりませんでした")
             self.search_start = "1.0"
             return
         end_idx = f"{idx}+{len(pattern)}c"
@@ -314,13 +385,17 @@ class ChatGUI:
         if not os.path.isdir(model_dir):
             os.makedirs(model_dir, exist_ok=True)
         path = filedialog.askopenfilename(
-            title="Select Model",
+            title="モデルを選択",
             initialdir=model_dir,
-            filetypes=[("GGUF Model", "*.gguf"), ("All files", "*.*")],
+            filetypes=[("GGUF モデル", "*.gguf"), ("すべてのファイル", "*.*")],
         )
         if path:
             self.model_path = path
-            messagebox.showinfo("Model Selected", f"Model set to:\n{path}")
+            self._update_window_title()
+            messagebox.showinfo(
+                "モデルの選択",
+                f"モデルを設定しました:\n{_model_display_name(path)}",
+            )
 
     def toggle_wrap(self):
         for w in (self.input_text, self.history_text):
@@ -344,54 +419,40 @@ class ChatGUI:
         self._refresh_bold_font()
 
     def show_about(self):
-        # Create a small About window
         win = tk.Toplevel(self.root)
-        win.title("About")
+        win.title("このツールについて")
         win.transient(self.root)
         win.resizable(False, False)
+        win.configure(bg="white")
 
-        # Main text
+        model_name = _model_display_name(self.model_path)
         text = (
-            "Local LLM Notepad\n"
-            "Version 1.0.0\n"
-            "Built with tkinter and llama-cpp-python\n\n"
-            "Local LLM Notepad (c) by Run Zhou Ye\n\n"
-            "Licensed under a Creative Commons\n"
-            "Attribution-NonCommercial 4.0 International License.\n\n"
-            "You should have received a copy of the license\n"
-            "along with this work. If not, see:"
+            f"{_APP_NAME}\n\n"
+            "このツールは、お使いのパソコン上だけで動くローカル AI チャットです。\n"
+            "インターネット接続やクラウド API は不要で、入力した文章をもとに\n"
+            "AI（大規模言語モデル）が回答を生成します。会話内容は外に送られません。\n\n"
+            f"読み込み中のモデル: {model_name}\n\n"
+            "【動作環境】\n"
+            "・必要メモリ: 約 2 GB\n"
+            "・CPU のみで推論（GPU 不要・軽量動作を優先した設計）\n\n"
+            "【使い方】\n"
+            "下部の入力欄に質問を書き、「送信」ボタンまたは Ctrl+S で送ってください。\n"
+            "モデルは同梱の model フォルダ内の GGUF を自動で読み込みます。\n\n"
+            "製作者: OK"
         )
-        lbl = tk.Label(win, text=text, justify=tk.LEFT, bg="white")
-        lbl.pack(padx=15, pady=(15, 5), anchor="w")
+        lbl = tk.Label(win, text=text, justify=tk.LEFT, bg="white", padx=15, pady=15)
+        lbl.pack(anchor="w")
 
-        # Clickable link
-        link = "https://creativecommons.org/licenses/by-nc/4.0/"
-        link_lbl = tk.Label(
-            win,
-            text=link,
-            fg="blue",
-            cursor="hand2",
-            underline=True,
-            bg="white",
-        )
-        link_lbl.pack(padx=15, pady=(0, 15), anchor="w")
-        link_lbl.bind(
-            "<Button-1>",
-            lambda e, url=link: webbrowser.open_new(url)
-        )
+        tk.Button(win, text="閉じる", command=win.destroy, width=10).pack(pady=(0, 15))
 
-        # OK button to close
-        btn = tk.Button(win, text="OK", command=win.destroy)
-        btn.pack(pady=(0, 15))
-
-        # Center it over the main window
         self._center_window(win)
 
     # ─────────────────── Chat actions ───────────────────
     def on_send(self):
         if self.gen_thread and self.gen_thread.is_alive():
             messagebox.showinfo(
-                "Please wait", "Generation in progress.\nPress Ctrl+Z to stop first."
+                "お待ちください",
+                "応答を生成中です。\n先に Ctrl+Z で停止してください。",
             )
             return
 
@@ -403,7 +464,7 @@ class ChatGUI:
         prev = [(d["user"], d["assistant"]) for d in self.history_data[:-1]]
 
         self.history_text.config(state="normal")
-        self.history_text.insert(tk.END, f"User: {prompt}\nAssistant: ")
+        self.history_text.insert(tk.END, f"ユーザー: {prompt}\nアシスタント: ")
         self.assist_start = self.history_text.index("end-1c")
         self.history_text.config(state="disabled")
 
@@ -424,7 +485,7 @@ class ChatGUI:
 
     def on_clear(self):
         if self.gen_thread and self.gen_thread.is_alive():
-            messagebox.showinfo("Please wait", "Cannot clear while generating.")
+            messagebox.showinfo("お待ちください", "生成中はクリアできません。")
             return
         self.history_data.clear()
         self.history_text.config(state="normal")
@@ -574,7 +635,7 @@ class ChatGUI:
         # ── create the window & widgets on first use ──
         if self.user_prompts_win is None or not self.user_prompts_win.winfo_exists():
             self.user_prompts_win = tk.Toplevel(self.root)
-            self.user_prompts_win.title("User Prompts")
+            self.user_prompts_win.title("プロンプト一覧")
 
             # match main-window look
             self.user_prompts_win.configure(bg="white", bd=0, highlightthickness=0)
