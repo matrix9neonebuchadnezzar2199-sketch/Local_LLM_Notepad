@@ -4,6 +4,7 @@ import json
 import os
 import queue
 import re
+import sys
 import threading
 from typing import List, Tuple
 
@@ -24,6 +25,51 @@ _COLOR_SEND_BG = "#3d5a80"
 _COLOR_SEND_FG = "#ffffff"
 _COLOR_SEND_ACTIVE = "#2c4260"
 _APP_NAME = "Owl-Bot"
+_UI_FONT_SIZE = 10
+
+
+def _enable_windows_dpi_awareness() -> None:
+    """高 DPI 環境でウィンドウ全体が拡大ぼかしされないよう、起動前に DPI 認識を有効化。"""
+    if sys.platform != "win32":
+        return
+    try:
+        import ctypes
+
+        # Per-Monitor DPI Aware V2 (Windows 10 1703+)
+        ctypes.windll.shcore.SetProcessDpiAwareness(2)
+    except (AttributeError, OSError):
+        try:
+            import ctypes
+
+            ctypes.windll.user32.SetProcessDPIAware()
+        except (AttributeError, OSError):
+            pass
+
+
+def _pick_ui_font_family() -> str:
+    """日本語 UI 向けの TrueType フォントを選ぶ（ビットマップ系 MS Gothic は避ける）。"""
+    for family in ("Yu Gothic UI", "Meiryo UI", "Segoe UI", "MS UI Gothic"):
+        if family in tkfont.families():
+            return family
+    return "TkDefaultFont"
+
+
+def _configure_ui_fonts(root: tk.Tk) -> None:
+    """メニュー・入力欄・履歴で同じアンチエイリアス付きフォントを使う。"""
+    family = _pick_ui_font_family()
+    size = _UI_FONT_SIZE
+    for font_name in ("TkDefaultFont", "TkTextFont", "TkMenuFont", "TkHeadingFont", "TkFixedFont"):
+        try:
+            tkfont.nametofont(font_name).configure(family=family, size=size)
+        except tk.TclError:
+            pass
+    root.option_add("*Font", (family, size))
+    # Tcl/Tk の論理 DPI に合わせてスケーリング（拡大率 125% 等でのにじみ軽減）
+    try:
+        pixels_per_inch = root.winfo_fpixels("1i")
+        root.tk.call("tk", "scaling", pixels_per_inch / 72.0)
+    except tk.TclError:
+        pass
 
 
 def _model_display_name(model_path: str) -> str:
@@ -192,7 +238,7 @@ class ChatGUI:
             text="Ctrl+S",
             bg=_COLOR_PROMPT_BG,
             fg="#5a6d82",
-            font=("", 8),
+            font=(_pick_ui_font_family(), 8),
         ).pack(side=tk.BOTTOM)
 
         panes.add(prompt_outer, weight=1)
@@ -730,6 +776,8 @@ class ChatGUI:
 
 def run_app() -> None:
     """Create Tk root and start the main loop (used by main.py)."""
+    _enable_windows_dpi_awareness()
     root = tk.Tk()
+    _configure_ui_fonts(root)
     ChatGUI(root)
     root.mainloop()
