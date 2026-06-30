@@ -7,3 +7,15 @@ dist/
 Notepad/*.spec
 Notepad/models/*.gguf
 Notepad/models/.cache/
+
+# 生成されるアイコン（ensure_icon.py が Images/7tkhqJx7.png から再生成）
+Notepad/Owl-Bot.ico
+Notepad/Owl-Bot.png
+Notepad/Owl-Bot-512.png
+
+# 一時・テスト用成果物
+Notepad/_*.png
+Notepad/_*.ico
+
+# リリース用 zip（dist と同様に成果物）
+Notepad/dist/Owl-Bot-*.zip

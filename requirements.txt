@@ -1,3 +1,4 @@
 llama-cpp-python==0.3.32
 llama_cpp_agent==0.2.35
 pyinstaller==6.21.0
+Pillow>=10.0.0

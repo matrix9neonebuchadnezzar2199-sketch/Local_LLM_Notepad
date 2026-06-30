@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>2026-06-30 開発日記 - Owl-Bot</title>
+<style>
+/* ===== GitHub Dark v2 — 開発日記テンプレート ===== */
+:root {
+  --gh-canvas: #0d1117;
+  --gh-canvas-subtle: #161b22;
+  --gh-canvas-inset: #010409;
+  --gh-border: #30363d;
+  --gh-border-muted: #21262d;
+  --gh-fg: #e6edf3;
+  --gh-fg-muted: #8b949e;
+  --gh-fg-subtle: #6e7681;
+  --gh-accent: #58a6ff;
+  --gh-accent-emphasis: #1f6feb;
+  --gh-success: #3fb950;
+  --gh-attention: #d29922;
+  --gh-danger: #f85149;
+  --gh-done-bg: rgba(35, 134, 54, 0.15);
+  --gh-code-bg: #161b22;
+}
+
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+
+body.diary.diary-v2 {
+  margin: 0;
+  padding: 32px 16px 64px;
+  max-width: 1012px;
+  margin-inline: auto;
+  background: var(--gh-canvas);
+  color: var(--gh-fg);
+  font-family: system-ui, -apple-system, "Segoe UI", "Hiragino Kaku Gothic ProN", "Yu Gothic", Meiryo, sans-serif;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+/* Header */
+.gh-repo-header {
+  padding-bottom: 24px;
+  margin-bottom: 24px;
+  border-bottom: 1px solid var(--gh-border);
+}
+.gh-repo-header .eyebrow {
+  font-size: 12px;
+  color: var(--gh-fg-muted);
+  margin: 0 0 8px;
+}
+.gh-repo-header h1 {
+  margin: 0 0 8px;
+  font-size: 24px;
+  font-weight: 600;
+  color: var(--gh-accent);
+}
+.gh-repo-header .subtitle {
+  margin: 0 0 16px;
+  color: var(--gh-fg-muted);
+  font-size: 14px;
+}
+.gh-repo-header .header-labels {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+/* Labels */
+.gh-label {
+  display: inline-block;
+  padding: 0 10px;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 22px;
+  border-radius: 2em;
+  border: 1px solid transparent;
+  white-space: nowrap;
+}
+.gh-label-scope { background: rgba(136, 87, 255, 0.15); color: #a371f7; border-color: rgba(163, 113, 247, 0.4); }
+.gh-label-type { background: rgba(110, 118, 129, 0.2); color: var(--gh-fg-muted); border-color: var(--gh-border); }
+.gh-label-ok { background: rgba(63, 185, 80, 0.15); color: var(--gh-success); border-color: rgba(63, 185, 80, 0.4); }
+.gh-label-warn { background: rgba(210, 153, 34, 0.15); color: var(--gh-attention); border-color: rgba(210, 153, 34, 0.4); }
+.gh-label-err { background: rgba(248, 81, 73, 0.15); color: var(--gh-danger); border-color: rgba(248, 81, 73, 0.4); }
+
+/* TOC */
+.gh-toc {
+  margin-bottom: 24px;
+  border: 1px solid var(--gh-border);
+  border-radius: 6px;
+  overflow: hidden;
+  background: var(--gh-canvas-subtle);
+}
+.gh-toc-title {
+  margin: 0;
+  padding: 12px 16px;
+  font-size: 14px;
+  font-weight: 600;
+  background: var(--gh-border-muted);
+  border-bottom: 1px solid var(--gh-border);
+  color: var(--gh-fg);
+}
+.gh-toc table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.gh-toc th {
+  text-align: left;
+  padding: 8px 16px;
+  color: var(--gh-fg-muted);
+  font-weight: 600;
+  font-size: 12px;
+  border-bottom: 1px solid var(--gh-border);
+  background: var(--gh-canvas-subtle);
+}
+.gh-toc td {
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--gh-border-muted);
+  vertical-align: middle;
+}
+.gh-toc tr:last-child td { border-bottom: none; }
+.gh-toc tr:hover td { background: rgba(88, 166, 255, 0.04); }
+.gh-toc td:first-child {
+  font-family: ui-monospace, "JetBrains Mono", Consolas, monospace;
+  color: var(--gh-fg-muted);
+  white-space: nowrap;
+}
+
+/* Entry */
+.gh-entry {
+  margin: 24px 0;
+  padding: 20px;
+  border: 1px solid var(--gh-border);
+  border-radius: 6px;
+  background: var(--gh-canvas-subtle);
+}
+.gh-entry h2 {
+  margin: 0 0 12px;
+  padding-bottom: 8px;
+  font-size: 20px;
+  font-weight: 600;
+  border-bottom: 1px solid var(--gh-border);
+  color: var(--gh-fg);
+}
+.gh-entry-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 16px;
+  font-size: 12px;
+  color: var(--gh-fg-muted);
+}
+.gh-entry-meta .commit-hash {
+  font-family: ui-monospace, Consolas, monospace;
+  padding: 2px 6px;
+  background: var(--gh-code-bg);
+  border: 1px solid var(--gh-border);
+  border-radius: 4px;
+  color: var(--gh-accent);
+}
+.gh-entry-meta .pending { color: var(--gh-attention); font-style: italic; }
+
+.gh-entry h3 {
+  margin: 20px 0 10px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--gh-fg-muted);
+}
+.gh-entry h3:first-of-type { margin-top: 0; }
+.gh-entry p { margin: 8px 0; }
+.gh-entry p.lead { color: var(--gh-fg-muted); font-size: 15px; }
+
+/* Tables */
+.gh-table-wrap {
+  border: 1px solid var(--gh-border);
+  border-radius: 6px;
+  overflow: hidden;
+  margin: 12px 0;
+}
+.gh-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.gh-table th {
+  text-align: left;
+  padding: 8px 12px;
+  background: var(--gh-border-muted);
+  color: var(--gh-fg-muted);
+  font-weight: 600;
+  font-size: 12px;
+  border-bottom: 1px solid var(--gh-border);
+}
+.gh-table td {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--gh-border-muted);
+  vertical-align: top;
+}
+.gh-table tr:last-child td { border-bottom: none; }
+.gh-table tbody tr:hover td { background: rgba(88, 166, 255, 0.04); }
+
+/* Flow (horizontal) */
+.flow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 12px 0;
+  padding: 16px;
+  background: var(--gh-canvas-inset);
+  border: 1px solid var(--gh-border);
+  border-radius: 6px;
+}
+.flow-box {
+  padding: 8px 14px;
+  background: var(--gh-canvas-subtle);
+  border: 1px solid var(--gh-border);
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--gh-fg);
+}
+.flow-box.accent { border-color: var(--gh-accent-emphasis); color: var(--gh-accent); }
+.flow-box.done { border-color: var(--gh-success); background: var(--gh-done-bg); color: var(--gh-success); }
+.flow-arrow { color: var(--gh-fg-subtle); font-size: 16px; user-select: none; }
+
+/* Diff list */
+.diff-list { list-style: none; padding: 0; margin: 12px 0; font-family: ui-monospace, Consolas, monospace; font-size: 12px; border: 1px solid var(--gh-border); border-radius: 6px; overflow: hidden; }
+.diff-list li { padding: 4px 12px; border-bottom: 1px solid var(--gh-border-muted); display: flex; gap: 8px; align-items: baseline; }
+.diff-list li:last-child { border-bottom: none; }
+.diff-mark { width: 16px; font-weight: 700; flex-shrink: 0; }
+.diff-add { background: rgba(63, 185, 80, 0.08); }
+.diff-add .diff-mark { color: var(--gh-success); }
+.diff-mod { background: rgba(210, 153, 34, 0.06); }
+.diff-mod .diff-mark { color: var(--gh-attention); }
+.diff-del { background: rgba(248, 81, 73, 0.08); }
+.diff-del .diff-mark { color: var(--gh-danger); }
+
+/* Callout */
+.gh-callout {
+  margin: 12px 0;
+  padding: 12px 16px;
+  border: 1px solid var(--gh-border);
+  border-left: 3px solid var(--gh-accent-emphasis);
+  border-radius: 0 6px 6px 0;
+  background: rgba(88, 166, 255, 0.06);
+  font-size: 13px;
+}
+.gh-callout.warn { border-left-color: var(--gh-attention); background: rgba(210, 153, 34, 0.06); }
+.gh-callout .callout-tag { font-size: 11px; font-weight: 600; color: var(--gh-accent); margin-right: 8px; }
+
+/* Code */
+code {
+  font-family: ui-monospace, Consolas, monospace;
+  font-size: 12px;
+  padding: 2px 6px;
+  background: var(--gh-code-bg);
+  border: 1px solid var(--gh-border);
+  border-radius: 4px;
+  color: var(--gh-fg);
+}
+a { color: var(--gh-accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+strong { font-weight: 600; color: var(--gh-fg); }
+
+footer.gh-footer {
+  margin-top: 40px;
+  padding-top: 16px;
+  border-top: 1px solid var(--gh-border);
+  font-size: 12px;
+  color: var(--gh-fg-subtle);
+  text-align: center;
+}
+</style>
+</head>
+<body class="diary diary-v2">
+
+<header class="gh-repo-header">
+  <p class="eyebrow">Development Log / 2026-06-30</p>
+  <h1>Owl-Bot</h1>
+  <p class="subtitle">画像添付・OCR・マルチモーダルを撤去しテキスト専用 Gemma4 へ。アイコンぼやけはキャッシュが主因。</p>
+  <div class="header-labels">
+    <span class="gh-label gh-label-type">dev</span>
+    <span class="gh-label gh-label-scope">Owl-Bot</span>
+  </div>
+</header>
+
+<section class="gh-toc">
+  <h2 class="gh-toc-title">Timeline</h2>
+  <table>
+    <thead>
+      <tr><th>時刻</th><th>概要</th><th>種別</th><th>Status</th><th>詳細</th></tr>
+    </thead>
+    <tbody>
+      <!-- TOC_ROWS_INSERT_HERE -->
+      <tr>
+        <td>22:33</td>
+        <td>画像/OCR/mmproj 撤去・アイコンぼやけ対策（キャッシュ purge）・再ビルド</td>
+        <td><span class="gh-label gh-label-type">dev</span></td>
+        <td><span class="gh-label gh-label-ok">ok</span></td>
+        <td><a href="#entry-2233">詳細</a></td>
+      </tr>
+    </tbody>
+  </table>
+</section>
+
+<main>
+  <!-- ENTRIES_INSERT_HERE -->
+  <section class="gh-entry entry" id="entry-2233">
+    <h2>テキスト専用 Gemma4 への回帰とアイコンぼやけ対策</h2>
+    <div class="gh-entry-meta">
+      <span class="gh-label gh-label-type">dev</span>
+      <span>2026-06-30 22:33 JST</span>
+      <span class="commit-hash pending">commit: pending</span>
+    </div>
+
+    <h3>概要</h3>
+    <p class="lead">
+      小型 Gemma4 では画像テキスト抽出が実用にならず、マスターの指示で
+      <strong>画像添付（「+」）・OCR・マルチモーダル（mmproj）を全撤去</strong>し、
+      テキストチャット専用構成に戻した。あわせて再発していた
+      <strong>EXE アイコンのぼやけ</strong>を調査し、原因が ICO ではなく
+      <strong>Windows アイコンキャッシュ</strong>であることを特定して対処した。
+    </p>
+
+    <h3>変更ファイル</h3>
+    <ul class="diff-list">
+      <li class="diff-mod"><span class="diff-mark">M</span><span><code>Notepad/chat_gui.py</code> — 「+」ボタン・添付バー・OCR 解析・画像プロンプト合成・debug ログを除去。送信は純テキストのみ</span></li>
+      <li class="diff-mod"><span class="diff-mark">M</span><span><code>Notepad/llm_utils.py</code> — Gemma4ChatHandler・mmproj 探索・data URL・マルチモーダル分岐・textify を除去。<code>respond()</code> はテキスト生成に一本化</span></li>
+      <li class="diff-del"><span class="diff-mark">-</span><span><code>Notepad/image_utils.py</code> — ファイルごと削除</span></li>
+      <li class="diff-mod"><span class="diff-mark">M</span><span><code>Notepad/ensure_icon.py</code> — 各 ICO フレームを 512px 原画から個別 LANCZOS 縮小（append_images）。debug ログ除去</span></li>
+      <li class="diff-mod"><span class="diff-mark">M</span><span><code>Notepad/build.ps1</code> — mmproj コピー処理を削除</span></li>
+      <li class="diff-mod"><span class="diff-mark">M</span><span><code>requirements.txt</code> — pytesseract / rapidocr-onnxruntime を削除（Pillow は残置）</span></li>
+      <li class="diff-del"><span class="diff-mark">-</span><span><code>models/mmproj-BF16.gguf</code> 他（dist・HF キャッシュ含む）— 約 941MB×2 解放</span></li>
+    </ul>
+
+    <h3>設計判断</h3>
+    <p>
+      E2B クラスの小型モデルでは画像 OCR の出力が安定せず（「化して」等の崩壊応答）、
+      OCR エンジン（RapidOCR/Tesseract/WindowsOCR）も日本語精度・環境依存で実用性が低かった。
+      機能を残すより<strong>テキストチャットに集中</strong>する方が UX・配布サイズ・保守性すべてで有利と判断し撤去。
+    </p>
+    <div class="flow">
+      <span class="flow-box">入力（テキスト）</span>
+      <span class="flow-arrow">→</span>
+      <span class="flow-box accent">Gemma4 (gguf)</span>
+      <span class="flow-arrow">→</span>
+      <span class="flow-box done">ストリーミング応答</span>
+    </div>
+
+    <h3>検証</h3>
+    <div class="gh-table-wrap">
+      <table class="gh-table">
+        <thead><tr><th>項目</th><th>方法</th><th>結果</th></tr></thead>
+        <tbody>
+          <tr><td>構文チェック</td><td><code>py_compile</code> 4ファイル</td><td>COMPILE OK</td></tr>
+          <tr><td>画像参照の残骸</td><td>grep（image/attach/ocr/debug）</td><td>0 件</td></tr>
+          <tr><td>ICO フレーム品質</td><td>48px・256px を抽出して目視</td><td>鮮明（埋め込みは正常）</td></tr>
+          <tr><td>再ビルド</td><td>PyInstaller onefile</td><td>成功（49.7MB）</td></tr>
+          <tr><td>配布物</td><td>dist 内容確認</td><td>exe + gemma gguf のみ、mmproj 無し</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>残課題</h3>
+    <div class="gh-callout warn">
+      <span class="callout-tag">NOTE</span>
+      アイコンぼやけの真因は <strong>Windows アイコンキャッシュ</strong>。ICO 自体は鮮明。
+      <code>iconcache*</code> DB 削除 + Explorer 再起動で対処済みだが、環境によっては
+      サインアウト→再ログインが確実。commit ハッシュは後日 pending を更新。
+    </div>
+  </section>
+</main>
+
+<footer class="gh-footer">
+  <p>Cursor Dev Diary · style v2 (GitHub) · 2026-06-30</p>
+</footer>
+</body>
+</html>
