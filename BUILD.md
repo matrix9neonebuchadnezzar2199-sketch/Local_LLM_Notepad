@@ -1,6 +1,19 @@
 # Owl-Bot build (Gemma 4 E2B)
 
-Fork of [Local LLM Notepad](https://github.com/runzhouye/Local_LLM_Notepad) for portable Windows EXE with **Gemma 4 E2B** GGUF support.
+Fork of [Local LLM Notepad](https://github.com/runzhouye/Local_LLM_Notepad) for portable Windows chat with **Gemma 4 E2B** GGUF.
+
+## Distribution layout
+
+```
+Owl-Bot/
+  Owl-Bot.exe
+  model/
+    gemma-4-E2B-it-Q4_K_M.gguf
+```
+
+Copy the whole `Owl-Bot` folder to a USB stick. No `%TEMP%` model extraction — GGUF is read directly from `model/`.
+
+PyInstaller onefile still unpacks the small app runtime (~30 MB) to `%TEMP%` on each launch; only the LLM weights stay on the USB beside the EXE.
 
 ## Verified stack (2026-06-30)
 
@@ -11,14 +24,12 @@ Fork of [Local LLM Notepad](https://github.com/runzhouye/Local_LLM_Notepad) for 
 | llama-cpp-agent | 0.2.35 |
 | PyInstaller | 6.21.0 |
 
-`llama-cpp-python` 0.3.32 bundles a llama.cpp revision with `gemma4` architecture support.
-
 ## Prerequisites
 
 - Windows 10/11 x64
 - Python 3.10–3.12 (3.12 recommended)
-- Visual Studio 2019+ Build Tools (C++ desktop workload) — required when building `llama-cpp-python` from source
-- Short `TEMP` path if sdist extract fails on Windows (`C:\t`)
+- Visual Studio 2019+ Build Tools — only if building `llama-cpp-python` from source
+- Short `TEMP` path if sdist extract fails (`C:\t`)
 
 ## Setup
 
@@ -30,46 +41,35 @@ $env:TEMP = "C:\t"; $env:TMP = "C:\t"
 .\.venv\Scripts\pip install -r requirements.txt
 ```
 
-## Build EXE (model embedded — single file)
-
-Download the GGUF once, then bundle it into the EXE:
+## Download model (build / dev)
 
 ```powershell
-# 1) Model (skip if already in Notepad/models/)
 .\.venv\Scripts\pip install huggingface_hub
 .\.venv\Scripts\python.exe -c "from huggingface_hub import hf_hub_download; hf_hub_download(repo_id='unsloth/gemma-4-E2B-it-GGUF', filename='gemma-4-E2B-it-Q4_K_M.gguf', local_dir='Notepad/models')"
-
-# 2) Build
-cd Notepad
-$env:TEMP = "C:\t"; $env:TMP = "C:\t"
-.\build_bundled.ps1
 ```
 
-Output: `Notepad/dist/Owl-Bot.exe` (~3.0 GB). **No separate GGUF required** — model is inside the EXE.
-
-PyInstaller onefile extracts the bundle to `%TEMP%` on each launch (~3 GB free temp space needed). First start may take 30–60s while extracting.
-
-Manual equivalent:
+## Build distribution folder
 
 ```powershell
-..\.venv\Scripts\pyinstaller.exe --onefile --noconsole --additional-hooks-dir=. --name Owl-Bot `
-  --add-data "models\gemma-4-E2B-it-Q4_K_M.gguf;models" --clean main.py
+cd Notepad
+$env:TEMP = "C:\t"; $env:TMP = "C:\t"
+.\build.ps1
 ```
 
-**File → Select Model** still works to override the bundled weights.
+Output: `Notepad/dist/Owl-Bot/` — ready to zip or copy as-is.
 
-## Smoke test (headless)
+## Smoke test (headless, dev)
 
 ```powershell
 cd Notepad
 ..\.venv\Scripts\python.exe verify_gemma4.py
 ```
 
-Verified on this machine: model load OK, Japanese reply OK, RSS ~2.7 GB with `n_ctx=4096`.
+Uses `Notepad/models/*.gguf` during development; frozen EXE uses `model/` next to `Owl-Bot.exe`.
 
-## Runtime defaults (Owl-Bot fork)
+## Runtime defaults
 
-- Default model filename: `gemma-4-E2B-it-Q4_K_M.gguf`
-- `n_ctx`: 4096
-- `max_tokens`: 2048
+- Default model: `model/gemma-4-E2B-it-Q4_K_M.gguf`
+- `n_ctx`: 4096, `max_tokens`: 2048
 - CPU-only (`n_gpu_layers=0`)
+- **File → Select Model** overrides the default

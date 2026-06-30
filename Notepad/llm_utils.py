@@ -13,12 +13,16 @@ from llama_cpp_agent.messages_formatter import MessagesFormatter, PromptMarkers
 
 __all__ = [
     "DEFAULT_MODEL_FILENAME",
+    "MODEL_DIRNAME",
+    "get_app_dir",
+    "get_model_dir",
     "resolve_model_path",
     "respond",
 ]
 
 # Gemma 4 E2B on ~3 GB RAM: keep context modest (model weights dominate).
 DEFAULT_MODEL_FILENAME = "gemma-4-E2B-it-Q4_K_M.gguf"
+MODEL_DIRNAME = "model"
 DEFAULT_N_CTX = 4096
 DEFAULT_MAX_TOKENS = 2048
 
@@ -44,27 +48,31 @@ _llm: Llama | None = None
 _llm_model_path: str | None = None
 
 
+def get_app_dir() -> str:
+    """Directory of Owl-Bot.exe when frozen; Notepad/ when developing."""
+    if getattr(sys, "frozen", False):
+        return os.path.dirname(os.path.abspath(sys.executable))
+    return os.path.dirname(os.path.abspath(__file__))
+
+
+def get_model_dir() -> str:
+    """Distribution layout: {app_dir}/model/*.gguf"""
+    return os.path.join(get_app_dir(), MODEL_DIRNAME)
+
+
 def resolve_model_path(model: str | None = None) -> str:
-    """Resolve GGUF path: explicit path > PyInstaller bundle > models/ beside app."""
+    """Resolve GGUF path: explicit path > {app_dir}/model/ > dev models/."""
     if model and os.path.isfile(model):
         return os.path.abspath(model)
 
     name = os.path.basename(model) if model else DEFAULT_MODEL_FILENAME
+    app_dir = get_app_dir()
     notepad_dir = os.path.dirname(os.path.abspath(__file__))
-    candidates: list[str] = []
-
-    if getattr(sys, "frozen", False):
-        meipass = getattr(sys, "_MEIPASS", "")
-        if meipass:
-            candidates.append(os.path.join(meipass, "models", name))
-        candidates.append(os.path.join(os.path.dirname(sys.executable), name))
-
-    candidates.extend(
-        [
-            os.path.join(notepad_dir, "models", name),
-            os.path.join(notepad_dir, name),
-        ]
-    )
+    candidates = [
+        os.path.join(app_dir, MODEL_DIRNAME, name),
+        os.path.join(notepad_dir, "models", name),
+        os.path.join(notepad_dir, MODEL_DIRNAME, name),
+    ]
 
     for path in candidates:
         if os.path.isfile(path):

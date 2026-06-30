@@ -3,6 +3,7 @@ __pycache__/
 *.pyc
 Notepad/build/
 Notepad/dist/
+dist/
 Notepad/*.spec
 Notepad/models/*.gguf
 Notepad/models/.cache/

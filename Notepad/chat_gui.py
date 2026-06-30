@@ -12,7 +12,7 @@ import tkinter as tk
 import tkinter.font as tkfont
 from tkinter import filedialog, messagebox, simpledialog, ttk  # noqa: F401 – same imports kept
 
-from llm_utils import DEFAULT_MODEL_FILENAME, resolve_model_path, respond
+from llm_utils import DEFAULT_MODEL_FILENAME, get_model_dir, resolve_model_path, respond
 
 __all__ = ["ChatGUI", "run_app"]
 
@@ -310,9 +310,12 @@ class ChatGUI:
         self.zoom_in() if event.delta > 0 else self.zoom_out()
 
     def select_model(self):
+        model_dir = get_model_dir()
+        if not os.path.isdir(model_dir):
+            os.makedirs(model_dir, exist_ok=True)
         path = filedialog.askopenfilename(
             title="Select Model",
-            initialdir="models",
+            initialdir=model_dir,
             filetypes=[("GGUF Model", "*.gguf"), ("All files", "*.*")],
         )
         if path:
