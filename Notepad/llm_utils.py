@@ -14,6 +14,11 @@ __all__ = [
     "respond",
 ]
 
+# Gemma 4 E2B on ~3 GB RAM: keep context modest (model weights dominate).
+DEFAULT_MODEL_FILENAME = "gemma-4-E2B-it-Q4_K_M.gguf"
+DEFAULT_N_CTX = 4096
+DEFAULT_MAX_TOKENS = 2048
+
 # ───────────────────────── Gemma‑3 prompt markers ──────────────────────────
 _gemma_3_prompt_markers = {
     Roles.system:    PromptMarkers("", "\n"),
@@ -51,7 +56,7 @@ def _lazy_load_model(model_path: str) -> Llama:
         flash_attn=False,
         n_gpu_layers=0,
         n_batch=8,
-        n_ctx=102_400,
+        n_ctx=DEFAULT_N_CTX,
         n_threads=8,
         n_threads_batch=8,
     )
@@ -67,7 +72,7 @@ def respond(
     *,
     model: str | None = None,
     system_message: str = "You are a helpful assistant.",
-    max_tokens: int = 102_400,
+    max_tokens: int = DEFAULT_MAX_TOKENS,
     temperature: float = 0.7,
     top_p: float = 0.95,
     top_k: int = 40,
@@ -76,7 +81,7 @@ def respond(
 
     model_path = (
         model
-        or "gemma-3-1b-it-Q4_K_M.gguf"  # default
+        or DEFAULT_MODEL_FILENAME
     )
 
     llm = _lazy_load_model(model_path)

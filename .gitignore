@@ -1,0 +1,8 @@
+.venv/
+__pycache__/
+*.pyc
+Notepad/build/
+Notepad/dist/
+Notepad/*.spec
+Notepad/models/*.gguf
+Notepad/models/.cache/
