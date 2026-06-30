@@ -30,24 +30,33 @@ $env:TEMP = "C:\t"; $env:TMP = "C:\t"
 .\.venv\Scripts\pip install -r requirements.txt
 ```
 
-## Build EXE
+## Build EXE (model embedded — single file)
+
+Download the GGUF once, then bundle it into the EXE:
 
 ```powershell
-cd Notepad
-$env:TEMP = "C:\t"; $env:TMP = "C:\t"
-..\.venv\Scripts\pyinstaller.exe --onefile --noconsole --additional-hooks-dir=. --name Owl-Bot main.py
-```
-
-Output: `Notepad/dist/Owl-Bot.exe` (~50 MB). Model is **not** embedded.
-
-## Model (Gemma 4 E2B Q4_K_M)
-
-```powershell
+# 1) Model (skip if already in Notepad/models/)
 .\.venv\Scripts\pip install huggingface_hub
 .\.venv\Scripts\python.exe -c "from huggingface_hub import hf_hub_download; hf_hub_download(repo_id='unsloth/gemma-4-E2B-it-GGUF', filename='gemma-4-E2B-it-Q4_K_M.gguf', local_dir='Notepad/models')"
+
+# 2) Build
+cd Notepad
+$env:TEMP = "C:\t"; $env:TMP = "C:\t"
+.\build_bundled.ps1
 ```
 
-Place `gemma-4-E2B-it-Q4_K_M.gguf` next to `Owl-Bot.exe` or use **File → Select Model**.
+Output: `Notepad/dist/Owl-Bot.exe` (~3.0 GB). **No separate GGUF required** — model is inside the EXE.
+
+PyInstaller onefile extracts the bundle to `%TEMP%` on each launch (~3 GB free temp space needed). First start may take 30–60s while extracting.
+
+Manual equivalent:
+
+```powershell
+..\.venv\Scripts\pyinstaller.exe --onefile --noconsole --additional-hooks-dir=. --name Owl-Bot `
+  --add-data "models\gemma-4-E2B-it-Q4_K_M.gguf;models" --clean main.py
+```
+
+**File → Select Model** still works to override the bundled weights.
 
 ## Smoke test (headless)
 

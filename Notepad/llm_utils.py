@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import sys
 from typing import List, Tuple
 
 from llama_cpp import Llama
@@ -11,6 +12,8 @@ from llama_cpp_agent.chat_history.messages import Roles
 from llama_cpp_agent.messages_formatter import MessagesFormatter, PromptMarkers
 
 __all__ = [
+    "DEFAULT_MODEL_FILENAME",
+    "resolve_model_path",
     "respond",
 ]
 
@@ -39,6 +42,36 @@ _gemma_3_formatter = MessagesFormatter(
 
 _llm: Llama | None = None
 _llm_model_path: str | None = None
+
+
+def resolve_model_path(model: str | None = None) -> str:
+    """Resolve GGUF path: explicit path > PyInstaller bundle > models/ beside app."""
+    if model and os.path.isfile(model):
+        return os.path.abspath(model)
+
+    name = os.path.basename(model) if model else DEFAULT_MODEL_FILENAME
+    notepad_dir = os.path.dirname(os.path.abspath(__file__))
+    candidates: list[str] = []
+
+    if getattr(sys, "frozen", False):
+        meipass = getattr(sys, "_MEIPASS", "")
+        if meipass:
+            candidates.append(os.path.join(meipass, "models", name))
+        candidates.append(os.path.join(os.path.dirname(sys.executable), name))
+
+    candidates.extend(
+        [
+            os.path.join(notepad_dir, "models", name),
+            os.path.join(notepad_dir, name),
+        ]
+    )
+
+    for path in candidates:
+        if os.path.isfile(path):
+            return path
+
+    searched = "\n  ".join(candidates)
+    raise FileNotFoundError(f"Model not found: {name}\nSearched:\n  {searched}")
 
 
 def _lazy_load_model(model_path: str) -> Llama:
@@ -79,10 +112,7 @@ def respond(
     repeat_penalty: float = 1.1,
 ):
 
-    model_path = (
-        model
-        or DEFAULT_MODEL_FILENAME
-    )
+    model_path = resolve_model_path(model)
 
     llm = _lazy_load_model(model_path)
     provider = LlamaCppPythonProvider(llm)

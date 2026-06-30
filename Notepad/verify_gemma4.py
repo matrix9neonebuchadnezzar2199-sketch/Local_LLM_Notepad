@@ -9,14 +9,14 @@ import psutil
 
 # Notepad package imports
 sys.path.insert(0, os.path.dirname(__file__))
-from llm_utils import DEFAULT_MODEL_FILENAME, respond
-
-MODEL_PATH = os.path.join(os.path.dirname(__file__), "models", DEFAULT_MODEL_FILENAME)
+from llm_utils import resolve_model_path, respond
 
 
 def main() -> int:
-    if not os.path.isfile(MODEL_PATH):
-        print(f"FAIL: model not found: {MODEL_PATH}")
+    try:
+        model_path = resolve_model_path()
+    except FileNotFoundError as exc:
+        print(f"FAIL: {exc}")
         return 1
 
     proc = psutil.Process(os.getpid())
@@ -29,7 +29,7 @@ def main() -> int:
     t0 = time.perf_counter()
     last = ""
     try:
-        for chunk in respond(prompt, [], model=MODEL_PATH, max_tokens=256):
+        for chunk in respond(prompt, [], model=model_path, max_tokens=256):
             last = chunk
     except Exception as exc:
         print(f"FAIL: inference error: {exc}")

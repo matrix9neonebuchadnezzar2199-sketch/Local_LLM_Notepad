@@ -12,7 +12,7 @@ import tkinter as tk
 import tkinter.font as tkfont
 from tkinter import filedialog, messagebox, simpledialog, ttk  # noqa: F401 – same imports kept
 
-from llm_utils import DEFAULT_MODEL_FILENAME, respond
+from llm_utils import DEFAULT_MODEL_FILENAME, resolve_model_path, respond
 
 __all__ = ["ChatGUI", "run_app"]
 
@@ -133,7 +133,10 @@ class ChatGUI:
             r"(\|[^\n]+\|\n\|[ \-:|]+\|\n(?:\|[^\n]+\|\n?)*)",
             re.MULTILINE,
         )
-        self.model_path = DEFAULT_MODEL_FILENAME
+        try:
+            self.model_path = resolve_model_path(DEFAULT_MODEL_FILENAME)
+        except FileNotFoundError:
+            self.model_path = DEFAULT_MODEL_FILENAME
         self.search_start = "1.0"
 
         # Window for user prompts (created on first ctrl-click)
